@@ -1,17 +1,19 @@
 import board
 import busio
 import usb_hid
+import supervisor
 from adafruit_hid.keyboard import Keyboard
 from key_decode_dict import KEY_DECODE_DICT
 
 # Global variables
 BYTES_PER_READ = 32 # number of bytes read in from UART
 HOLD_KEYS_MODIFER = '~'
+SOFT_RESET_MODIFER = '*'
 CLEAR_BUFFER_MODIFER = '!'
 SEPARATE_KEYS_MODIFER = '|'
 
 # Setup
-uart = busio.UART(board.TX, board.RX, baudrate=115200)
+uart = busio.UART(board.TX, board.RX, baudrate=115200, timeout=0.2)
 kbd = Keyboard(usb_hid.devices)
 
 def print_uart(obj):
@@ -80,15 +82,27 @@ def keyboard_loop():
     """
     byte_string = b''
     byte_string_updated = True
+    
+    hold_keys = False
+    hold_keys_list = []
+
     while True:
         uart_bytes = uart.read(32)
 
         if byte_string != b'' and byte_string_updated:
             print_uart(f"Current buffer: {bytes_to_str(byte_string)}")
             byte_string_updated = False
+        elif byte_string != b'' and hold_keys:
+            for key in hold_keys_list:
+                kbd.send(key)
 
         if uart_bytes is None:
             continue
+        elif bytes(CLEAR_BUFFER_MODIFER, 'ascii') in uart_bytes:
+            print_uart('Cleared buffer')
+            byte_string = b''
+        elif bytes(SOFT_RESET_MODIFER, 'ascii') in uart_bytes:
+            supervisor.reload()
         elif (b'\n' not in uart_bytes and b'\r' not in uart_bytes):
             print_uart(uart_bytes)
             byte_string = byte_string + uart_bytes
@@ -100,17 +114,16 @@ def keyboard_loop():
             print_uart(uart_bytes)
         
         print_uart(f"input: {byte_string}")
-        hold_keys, keycode_list = parse_raw_uart(byte_string)
+        hold_keys, keycode_list = parse_raw_uart(byte_string) 
         byte_string = b''
 
         print_uart(keycode_list)
     
+        # Send the keys, and then send a report that they were released
+        for key in keycode_list:
+            kbd.send(key)
         if hold_keys:
-            # Send the keys pressed, and left them held
-            kbd.press(*keycode_list)
-        else:
-            # Send the keys, and then send a report that they were released
-            kbd.send(*keycode_list)
+            hold_keys_list = keycode_list
 
 print_uart("Starting loop")
 keyboard_loop()

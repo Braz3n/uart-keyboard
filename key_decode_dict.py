@@ -14,6 +14,8 @@ KEY_DECODE_DICT = {
     'ENTER': Keycode.ENTER,
     'SPACE': Keycode.SPACE,
     'ESC': Keycode.ESCAPE,
+    'DEL': Keycode.BACKSPACE,
+    'BACKSPACE': Keycode.BACKSPACE,
     '`': Keycode.GRAVE_ACCENT,
     '\\': Keycode.BACKSLASH,
     '/': Keycode.FORWARD_SLASH,
