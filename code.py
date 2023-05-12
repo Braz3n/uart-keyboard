@@ -1,6 +1,7 @@
 import board
 import busio
 import usb_hid
+import storage
 import supervisor
 from adafruit_hid.keyboard import Keyboard
 from key_decode_dict import KEY_DECODE_DICT
@@ -11,10 +12,11 @@ HOLD_KEYS_MODIFER = '~'
 SOFT_RESET_MODIFER = '*'
 CLEAR_BUFFER_MODIFER = '!'
 SEPARATE_KEYS_MODIFER = '|'
+ENABLE_DISK_MODIFIER = '^'
 
 # Setup
 uart = busio.UART(board.TX, board.RX, baudrate=115200, timeout=0.2)
-kbd = Keyboard(usb_hid.devices)
+kbd = Keyboard(usb_hid.devices) 
 
 def print_uart(obj):
     uart.write(bytes(str(obj), 'ascii') + '\r\n')
@@ -103,6 +105,8 @@ def keyboard_loop():
             byte_string = b''
         elif bytes(SOFT_RESET_MODIFER, 'ascii') in uart_bytes:
             supervisor.reload()
+        elif bytes(ENABLE_DISK_MODIFIER, 'ascii') in uart_bytes:
+            storage.erase_filesystem()
         elif (b'\n' not in uart_bytes and b'\r' not in uart_bytes):
             print_uart(uart_bytes)
             byte_string = byte_string + uart_bytes
